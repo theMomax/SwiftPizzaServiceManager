@@ -1,7 +1,16 @@
 import Vapor
 import FluentMySQL
 
-final class ResourceController {
+final class ResourceController: RouteCollection {
+    
+    /// Registers handlers
+    func boot(router: Router) throws {
+        let v1 = router.grouped("api/v1")
+        
+        v1.get("store", use: fetchAvailable)
+        v1.post([Resource].self, at: "refill", use: add)
+        v1.post("order", DBRecipe.parameter, use: order)
+    }
     
     var store: DBStore
     
@@ -10,34 +19,34 @@ final class ResourceController {
     }
     
     /// removes the required resources from the store if available
-    func order(_ req: Request) throws -> EventLoopFuture<Response> {
-        return try req.parameters.next(DBRecipe.self).flatMap { recipe in
-            return try recipe.resources.query(on: req).all().flatMap { resources in
-                return try self.store.remove(resources, on: req).transform(to: Responder<String>("ordered \(recipe.title)").respond(to: req))
-            }
+    func order(_ req: Request) throws -> Future<Wrapper<V>> {
+        return try req.parameters.next(DBRecipe.self).flatMap(to: ([DBResource], DBRecipe).self, { recipe in
+            return try recipe.resources.query(on: req).all().and(result: recipe)
+        }).flatMap { (resources, recipe) in
+            return try self.store.remove(resources, on: req).transform(to: Wrapper<V>("ordered \(recipe.title)"))
         }
     }
     
     
     /// Returns a list of all resources in store
-    func fetchAvailable(_ req: Request) throws -> EventLoopFuture<Response> {
-        return try store.items.query(on: req).all().flatMap { items in
+    func fetchAvailable(_ req: Request) throws -> Future<Wrapper<[Resource]>> {
+        return try store.items.query(on: req).all().map { items in
             
-            if items.count == 0 {
+            guard items.count > 0 else {
                 throw RecipeError.noRecipesFound
             }
             
-            return items.map { dbresource in
-                return dbresource.resolve(on: req)
-            }.flatten(on: req).flatMap { resources in
-                return Responder(of: resources, "\(resources.count) recipes found").respond(to: req)
-            }
+            return Wrapper(of: items.map { dbresource in
+                return dbresource.public
+            }, "\(items.count) recipes found")
         }
     }
     
     /// Adds a resource to the store
-    func add(_ req: Request) throws -> EventLoopFuture<Response> {
-        return try req.content.decode([Resource].self).flatMap { resources in
+    func add(_ req: Request, resources: [Resource]) throws -> Future<Wrapper<V>> {
+        let message = req.eventLoop.newPromise(of: Wrapper<V>.self)
+        
+        DispatchQueue.global().async {
             DBStore.semaphore.wait()
             defer {
                 DBStore.semaphore.signal()
@@ -46,8 +55,9 @@ final class ResourceController {
                 let dbr = DBResource(name: r.name, amount: r.amount, storeID: self.store.id!)
                 _ = dbr.save(on: req)
             }
-            return Responder<String>("\(resources.count) resources added to store").respond(to: req)
+            message.succeed(result: Wrapper<V>("\(resources.count) resources added to store"))
         }
+        return message.futureResult
     }
     
 }

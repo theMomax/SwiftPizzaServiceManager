@@ -1,29 +1,30 @@
 import Vapor
 
+struct V: Content { }
 
-struct Wrapper<T: Content>: Content {
-    var message: String?
+struct Wrapper<T: Content>: ResponseEncodable {
     
-    var data: T?
-    
-    init(of data: T? = nil, _ message: String? = nil) {
-        self.data = data
-        self.message = message
+    private struct Container<T: Content>: Content {
+        var message: String?
+        
+        var data: T?
+        
+        init(of data: T? = nil, _ message: String? = nil) {
+            self.data = data
+            self.message = message
+        }
     }
-}
-
-struct Responder<T: Content> {
     
-    var wrapper: Wrapper<T>
+    private var container: Container<T>
     
     var status: HTTPStatus
     
     init(of data: T? = nil, _ message: String? = nil, with status: HTTPStatus = .ok) {
         self.status = status
-        self.wrapper = Wrapper(of: data, message)
+        self.container = Container(of: data, message)
     }
     
-    func respond(to request: Request) -> EventLoopFuture<Response> {
-        return wrapper.encode(status: status, for: request)
+    func encode(for request: Request) -> EventLoopFuture<Response> {
+        return container.encode(status: status, for: request)
     }
 }

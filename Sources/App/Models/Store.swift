@@ -35,7 +35,7 @@ extension DBStore {
                 
                 for r in items {
                     
-                    var available: [DBResource] = try self.items.query(on: con).filter(\.name == r.name).all().wait()
+                    let available: [DBResource] = try self.items.query(on: con).filter(\.name == r.name).all().wait()
                     
                     var i = 0
                     

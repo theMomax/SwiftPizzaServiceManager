@@ -3,10 +3,6 @@ import Vapor
 
 final class DBResource: MySQLModel {
     
-    typealias ID = Int
-    
-    static let idKey: IDKey = \.id
-    
     var id: Int?
     
     var name: String
@@ -17,18 +13,16 @@ final class DBResource: MySQLModel {
     
     var storeID: Int?
     
+    var `public`: Resource {
+        return Resource(from: self)
+    }
+    
     init(id: Int? = nil, name: String, amount: Double, recipeID: Int? = nil, storeID: Int? = nil) {
         self.id = id
         self.name = name
         self.amount = amount
         self.recipeID = recipeID
         self.storeID = storeID
-    }
-    
-    func resolve(on con: DatabaseConnectable) -> EventLoopFuture<Resource> {
-        let prom = con.eventLoop.newPromise(of: Resource.self)
-        prom.succeed(result: Resource(from: self))
-        return prom.futureResult
     }
 }
 

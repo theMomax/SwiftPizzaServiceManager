@@ -1,4 +1,5 @@
 import Vapor
+import Fluent
 
 extension ErrorMiddleware {
     
@@ -28,6 +29,10 @@ extension ErrorMiddleware {
             case let validation as ValidationError:
                 // this is a validation error
                 reason = validation.reason
+                status = .badRequest
+                headers = [:]
+            case let fluent as FluentError where fluent.reason.starts(with: "Could not convert parameter"):
+                reason = fluent.reason
                 status = .badRequest
                 headers = [:]
             case let debuggable as Debuggable where !environment.isRelease:
