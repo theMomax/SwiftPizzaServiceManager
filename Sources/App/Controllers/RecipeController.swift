@@ -56,6 +56,13 @@ final class RecipeController: RouteCollection {
                 throw RecipeError.illegalContent
             }
             
+            dbrecipe.title = recipe.title
+            _ = try dbrecipe.resources.query(on: req).all().map({ resources in
+                for r in resources {
+                    _ = r.delete(on: req)
+                }
+            })
+            
             return dbrecipe.update(on: req).and(result: recipe)
         }).map { (dbrecipe, recipe) in
             

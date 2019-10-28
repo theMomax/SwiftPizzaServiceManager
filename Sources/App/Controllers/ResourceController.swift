@@ -38,7 +38,7 @@ final class ResourceController: RouteCollection {
             
             return Wrapper(of: items.map { dbresource in
                 return dbresource.public
-            }, "\(items.count) recipes found")
+            }, "\(items.count) resources found")
         }
     }
     

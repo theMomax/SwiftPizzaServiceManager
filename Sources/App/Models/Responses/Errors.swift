@@ -23,7 +23,7 @@ enum RecipeError: AbortError {
             case .createWithSpecificId, .duplicateTitle:
                 return .conflict
             case .noRecipesFound:
-                return .noContent
+                return .ok
             case .illegalContent, .deleteNonexistant:
                 return .badRequest
             }
